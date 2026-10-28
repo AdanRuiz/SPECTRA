@@ -1,0 +1,13 @@
+# Checklist del Peer Review (A10). Cambia o amplía según el área (CONSORT, PRISMA, ML Reproducibility...).
+nombre: Checklist de reproducibilidad y artefactos (inspirado en ACM Artifact Review y ML Reproducibility Checklist)
+items:
+  - Las afirmaciones centrales están enunciadas y cada una tiene evidencia asociada.
+  - El método describe entorno, versiones, configuración y comandos para reproducir.
+  - Los resultados reportan variabilidad (std/IC) cuando hay mediciones repetidas.
+  - Los baselines o comparaciones son justos y están en las mismas condiciones.
+  - El código está disponible e identificado (repositorio + commit).
+  - Las pruebas estadísticas son adecuadas y estaban preregistradas (o el post hoc está declarado).
+  - Las limitaciones y amenazas a la validez son explícitas.
+  - La literatura relevante y los sistemas competidores están citados y comparados.
+  - No hay afirmaciones autoreportadas presentadas como medidas.
+  - Existe declaración de uso de IA.

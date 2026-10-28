@@ -1,0 +1,27 @@
+# Rúbrica institucional (configurable). A9 la verifica criterio por criterio.
+norma_citacion: APA 7
+criterios:
+  - id: R1
+    nombre: Problema y pregunta de investigación explícitos
+    descripcion: La introducción enuncia el problema, la pregunta y las hipótesis.
+  - id: R2
+    nombre: Contribución delimitada
+    descripcion: Las contribuciones se listan y se distinguen del trabajo previo citado.
+  - id: R3
+    nombre: Marco teórico pertinente
+    descripcion: Los conceptos usados se definen con fuentes.
+  - id: R4
+    nombre: Método reproducible
+    descripcion: El método permite reproducir el estudio (versiones, entorno, comandos, datos).
+  - id: R5
+    nombre: Resultados respaldados por evidencia
+    descripcion: Todo resultado proviene de art_05 y distingue medido / inspeccionado / autoreportado.
+  - id: R6
+    nombre: Discusión de hipótesis
+    descripcion: Cada hipótesis se discute como confirmada, no confirmada o no evaluada.
+  - id: R7
+    nombre: Amenazas a la validez y limitaciones
+    descripcion: Se tratan validez interna, externa, de constructo y de conclusión.
+  - id: R8
+    nombre: Integridad
+    descripcion: Declaración de uso de IA, preregistro declarado (prospectivo o post hoc) y licencias.

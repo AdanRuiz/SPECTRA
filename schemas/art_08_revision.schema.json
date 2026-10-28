@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "art_08_revision",
+  "type": "object",
+  "required": ["puertas_duras", "criterios", "score_global", "observaciones", "cambios_sugeridos"],
+  "properties": {
+    "puertas_duras": {"type": "object"},
+    "criterios": {
+      "type": "object",
+      "required": ["cohesion", "rigor_citas", "claridad", "estilo", "soporte_conclusiones"],
+      "additionalProperties": {"type": "number", "minimum": 0, "maximum": 100}
+    },
+    "score_global": {"type": "number", "minimum": 0, "maximum": 100},
+    "observaciones": {"type": "array", "items": {"type": "string"}},
+    "cambios_sugeridos": {"type": "array", "items": {
+      "type": "object", "required": ["seccion", "sugerencia", "severidad"],
+      "properties": {"seccion": {"type": "string"}, "linea": {"type": ["integer", "null"]}, "original": {"type": ["string", "null"]},
+                     "sugerencia": {"type": "string"}, "severidad": {"enum": ["alta", "media", "baja"]}}}}
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "art_03_literatura",
+  "type": "object",
+  "required": ["articulos", "descartados", "tabla_comparativa_resumen"],
+  "properties": {
+    "articulos": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["clave_bib", "id", "bloque", "titulo", "autores", "anio", "metodologia", "metricas_clave", "limitaciones"],
+        "properties": {
+          "clave_bib": {"type": "string", "pattern": "^[A-Za-z0-9_:-]+$"},
+          "id": {"type": "object", "properties": {"doi": {"type": ["string", "null"]}, "arxiv": {"type": ["string", "null"]}, "url": {"type": ["string", "null"]}}},
+          "verificado": {"type": "object"},
+          "bloque": {"enum": ["fundacional", "reciente"]},
+          "titulo": {"type": "string"},
+          "autores": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+          "anio": {"type": ["integer", "null"]},
+          "venue": {"type": ["string", "null"]},
+          "metodologia": {"type": "string"},
+          "metricas_clave": {"type": "array", "items": {
+            "type": "object", "required": ["nombre", "valor"],
+            "properties": {"nombre": {"type": "string"}, "valor": {}, "dataset": {"type": ["string", "null"]}, "pagina_o_tabla": {"type": ["string", "null"]}}}},
+          "limitaciones": {"type": "string"},
+          "relevancia": {"type": "string"}
+        }
+      }
+    },
+    "descartados": {"type": "array", "items": {"type": "object", "required": ["referencia", "motivo"]}},
+    "tabla_comparativa_resumen": {"type": "string"}
+  }
+}

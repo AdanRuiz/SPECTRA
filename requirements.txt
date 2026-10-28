@@ -1,0 +1,5 @@
+PyYAML>=6.0
+jsonschema>=4.20
+requests>=2.31
+pypdfium2>=4.0      # opcional: lectura de PDFs del corpus
+pytest>=8.0         # pruebas

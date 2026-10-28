@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "art_06_mapa.graph",
+  "type": "object",
+  "required": ["raiz", "nodos", "aristas", "secciones_borrador"],
+  "properties": {
+    "raiz": {"type": "string"},
+    "nodos": {"type": "array", "minItems": 5, "items": {
+      "type": "object", "required": ["id", "etiqueta", "tipo"],
+      "properties": {"id": {"type": "string"}, "etiqueta": {"type": "string", "maxLength": 120},
+                     "tipo": {"enum": ["problema", "hipotesis", "concepto", "trabajo", "metodo", "resultado", "contribucion", "limitacion", "mecanismo"]},
+                     "origen": {"type": "string"}}}},
+    "aristas": {"type": "array", "items": {"type": "object", "required": ["de", "a"]}},
+    "secciones_borrador": {"type": "array", "minItems": 4, "items": {"type": "object", "required": ["seccion", "nodos"],
+      "properties": {"seccion": {"type": "string"}, "nodos": {"type": "array", "items": {"type": "string"}}}}}
+  }
+}

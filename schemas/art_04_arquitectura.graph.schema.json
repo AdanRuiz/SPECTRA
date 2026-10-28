@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "art_04_arquitectura.graph",
+  "type": "object",
+  "required": ["nodos", "aristas"],
+  "properties": {
+    "grupos": {"type": "array", "items": {"type": "object", "required": ["id", "etiqueta"]}},
+    "nodos": {"type": "array", "minItems": 2, "items": {
+      "type": "object", "required": ["id", "etiqueta"],
+      "properties": {"id": {"type": "string"}, "etiqueta": {"type": "string"},
+                     "tipo": {"enum": ["componente", "servicio", "datos", "externo", "interfaz", "protocolo", "metodo", "default"]},
+                     "grupo": {"type": "string"}, "descripcion": {"type": "string"}, "origen": {"type": "string"}}}},
+    "aristas": {"type": "array", "items": {"type": "object", "required": ["de", "a"],
+      "properties": {"de": {"type": "string"}, "a": {"type": "string"}, "etiqueta": {"type": "string"}}}}
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Sobre común de artefactos SPECTRA (§5)",
+  "type": "object",
+  "required": ["schema_version", "artifact_id", "version", "generado_por", "timestamp", "entradas", "sha256"],
+  "properties": {
+    "schema_version": {"type": "string"},
+    "artifact_id": {"type": "string"},
+    "version": {"type": "integer", "minimum": 1},
+    "generado_por": {
+      "type": "object",
+      "required": ["agente", "proveedor", "modelo"],
+      "properties": {
+        "agente": {"type": "string"},
+        "proveedor": {"type": "string"},
+        "modelo": {"type": "string"},
+        "version_prompt": {"type": "string"}
+      }
+    },
+    "timestamp": {"type": "string"},
+    "entradas": {"type": "array", "items": {"type": "object", "required": ["artifact", "version"]}},
+    "sha256": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+    "costo": {"type": "object"}
+  }
+}

@@ -1,0 +1,186 @@
+# =============================================================================
+# SPECTRA — Scientific Paper Engineering & Collaborative Trained Research Agents
+# Configuración global. Cada proyecto puede sobrescribir cualquier clave en
+# projects/<nombre>/proyecto.yaml (fusión profunda: el proyecto gana).
+# Todos los IDs de modelo se verificaron contra el catálogo de OpenRouter el
+# 2026-10-28; compruébalos con:  python -m spectra models-check
+# =============================================================================
+
+orquestador:
+  # Implementación del orquestador. Se puede cambiar sin tocar código:
+  #   python       -> spectra/orchestrator.py (máquina de estados en Python)
+  #   claude_code  -> skill /spectra de Claude Code (.claude/skills/spectra)
+  #   auto         -> claude_code si existe el binario `claude` y se lanza desde
+  #                   Claude Code; si no, python
+  #   "modulo:Clase" -> tu propio orquestador (subclase de spectra.orchestrator.Orchestrator)
+  implementacion: python
+  prompt: agents/specs/00_orquestador.md     # reglas del orquestador (también genera la skill)
+  # Modelo que usa el orquestador para tareas de apoyo (resúmenes para HITL,
+  # explicación de decisiones). En modo claude_code es el modelo de la skill.
+  modelo:
+    proveedor: openrouter
+    modelo: anthropic/claude-haiku-5.5
+    claude_code_modelo: sonnet
+  perfil_modelos: principal                  # principal | economico
+  max_iteraciones_revision: 3
+  max_reintentos_agente: 2
+  max_rondas_peer_review: 1
+  presupuesto_usd_total: 30
+  presupuesto_usd_por_agente: 6
+  aviso_presupuesto: 0.8
+  tipo_investigacion: cuantitativa_ml        # cuantitativa_ml | estadistica | cualitativa | ingenieria_software
+  idioma: es
+
+# -----------------------------------------------------------------------------
+# Flujo: qué fases se ejecutan y cuáles se saltan.
+#   preset:
+#     completo                  -> A1..A10 (el pipeline v2 completo)
+#     implementacion_existente  -> el código ya existe: A4 hace ingeniería inversa,
+#                                  A5 documenta y evalúa y sugiere mecanismos
+#     desde_propuesta           -> ya hay ideas/marco/estado del arte; empieza en A4
+#     solo_redaccion            -> ya hay resultados; empieza en A6
+#     solo_revision             -> ya hay borrador; empieza en A8
+#   saltar_si_existe: una fase se salta si sus artefactos de salida ya existen
+#     (en artifacts/ o declarados en `existentes`).
+#   fases: política por estado (auto | ejecutar | saltar). Gana sobre el preset.
+#   agentes_por_estado: qué agente ejecuta cada estado. Gana sobre el preset.
+# -----------------------------------------------------------------------------
+flujo:
+  preset: completo
+  saltar_si_existe: true
+  fases: {}
+  agentes_por_estado: {}
+
+# Artefactos o insumos que ya existen. Claves posibles:
+#   implementacion: { repo: ruta, comandos_evaluacion: [...], cwd: subcarpeta, timeout_s: 600 }
+#   art_01_ideas | art_02_marco | art_03_literatura | art_04_propuesta | art_05_resultados |
+#   art_06_mapa | art_07_borrador | art_refs: ruta a un archivo existente (se importa como v1)
+#   corpus_pdfs: carpeta con PDFs propios
+#   resultados_adicionales: JSON con mediciones hechas por el investigador
+existentes: {}
+
+hitl:
+  modo: archivo            # terminal | archivo | auto
+  # archivo: el orquestador escribe state/hitl/<H>.md y se detiene; el humano
+  #          responde con `python -m spectra approve|reject|edit <H>` y `resume`.
+  # terminal: pregunta en la consola (si no hay TTY cae a archivo).
+  # auto: aprueba todo (solo para pruebas; queda registrado como aprobacion automatica).
+  mapa_mental: true        # HITL 2b
+  mecanismos: true         # HITL 5 (solo con implementación existente)
+
+puertas:
+  score_global_min: 85
+  criterio_min: 75
+  similitud_max: 0.15
+  ngram_similitud: 8
+  enteros_ignorados_max: 12      # enteros pequeños (enumeraciones) no se verifican
+  anios_ignorados: [1900, 2100]
+
+busqueda:
+  fuentes: [openalex, crossref, arxiv, semantic_scholar]
+  max_resultados: 20
+  anios_recientes: 3
+  contacto_email: ""             # opcional: polite pool de OpenAlex/Crossref
+  semantic_scholar_api_key_env: S2_API_KEY
+
+compilacion:
+  motor: auto                    # auto | pandoc | interno
+  csl: apa                       # apa | ieee
+  pdf_navegador: auto            # auto | ruta a msedge/chrome | ninguno
+
+proveedores:
+  openrouter:
+    tipo: openai_compat
+    base_url: https://openrouter.ai/api/v1
+    api_key_env: OPENROUTER_API_KEY
+    cabeceras: { X-Title: SPECTRA }
+  claude_cli:                    # usa tu sesión de Claude Code: `claude -p`
+    tipo: claude_cli
+    binario: claude
+  lmstudio:                      # cualquier servidor compatible con OpenAI
+    tipo: openai_compat
+    base_url: http://localhost:1234/v1
+    api_key_env: LMSTUDIO_API_KEY
+
+# -----------------------------------------------------------------------------
+# Agentes. Cada uno se puede cambiar por completo desde aquí:
+#   prompt:       ruta al prompt canónico (puedes apuntar al tuyo)
+#   clase:        "modulo:Clase" para reemplazar la lógica del agente
+#   habilitado:   false -> la fase se salta (si no es imprescindible)
+#   temperatura, max_tokens, herramientas
+#   <perfil>:     { proveedor, openrouter_id | modelo, claude_code: {subagente, modelo} }
+#   override:     igual que un perfil, pero gana siempre (cambio rápido de modelo)
+# -----------------------------------------------------------------------------
+agentes:
+  a01_ideas:
+    prompt: agents/specs/01_ideas.md
+    herramientas: [buscar_academico]
+    temperatura: 0.8
+    principal: { openrouter_id: openai/gpt-6-astra }
+    economico: { openrouter_id: moonshotai/kimi-k3 }
+  a02_marco:
+    prompt: agents/specs/02_marco.md
+    herramientas: [buscar_corpus, buscar_academico, agregar_al_corpus]
+    principal: { openrouter_id: moonshotai/kimi-k3 }
+    economico: { openrouter_id: google/gemini-3.8-flash }
+  a03_estado_arte:
+    prompt: agents/specs/03_estado_arte.md
+    herramientas: [buscar_academico, resolver_doi]
+    principal: { openrouter_id: google/gemini-3.8-flash }
+    economico: { openrouter_id: deepseek/deepseek-v4.1-flash }
+  a04_arquitectura:
+    prompt: agents/specs/04_arquitectura.md
+    principal:
+      claude_code: { subagente: a04-arquitectura, modelo: opus }
+      openrouter_id: anthropic/claude-opus-5.5
+    economico: { openrouter_id: deepseek/deepseek-v4-pro-0813 }
+  a04b_arquitectura_inversa:     # preset implementacion_existente
+    prompt: agents/specs/04b_arquitectura_inversa.md
+    herramientas: [leer_repo]
+    principal:
+      claude_code: { subagente: a04b-arquitectura-inversa, modelo: opus }
+      openrouter_id: anthropic/claude-opus-5.5
+    economico: { openrouter_id: deepseek/deepseek-v4-pro-0813 }
+  a05_implementador:
+    prompt: agents/specs/05_implementador.md
+    herramientas: [python_sandbox]
+    principal: { openrouter_id: openai/gpt-6.1-sol }
+    economico: { openrouter_id: deepseek/deepseek-v4-pro }
+  a05b_documentador:             # preset implementacion_existente
+    prompt: agents/specs/05b_documentador.md
+    herramientas: [leer_repo, ejecutar_evaluacion]
+    principal: { openrouter_id: openai/gpt-6.1-sol }
+    economico: { openrouter_id: deepseek/deepseek-v4-pro }
+  a06_mapa_mental:
+    prompt: agents/specs/06_mapa_mental.md
+    principal: { openrouter_id: google/gemini-3.8-flash }
+    economico: { openrouter_id: deepseek/deepseek-v4.1-flash }
+    imagen: { openrouter_id: google/gemini-3.1-flash-image, habilitado: false }
+  a07_redactor:
+    prompt: agents/specs/07_redactor.md
+    max_tokens: 32000
+    temperatura: 0.5
+    principal:
+      claude_code: { subagente: a07-redactor, modelo: sonnet }
+      openrouter_id: anthropic/claude-sonnet-5.5
+    economico: { openrouter_id: meta-llama/llama-4-maverick }
+  a08_revisor:                   # familia distinta al Redactor
+    prompt: agents/specs/08_revisor.md
+    temperatura: 0.2
+    principal: { openrouter_id: qwen/qwen3.8-max-0902 }
+    economico: { openrouter_id: deepseek/deepseek-v4.1-flash }
+  a09_asesor:
+    prompt: agents/specs/09_asesor.md
+    rubrica: config/rubrica.yaml
+    principal:
+      claude_code: { subagente: a09-asesor, modelo: fable }
+      openrouter_id: anthropic/claude-fable-5.1
+    economico:
+      claude_code: { subagente: a09-asesor, modelo: sonnet }
+      openrouter_id: anthropic/claude-sonnet-5.5
+  a10_peer_review:               # familia distinta al Redactor
+    prompt: agents/specs/10_peer_review.md
+    checklist: config/checklist_peer_review.yaml
+    temperatura: 0.3
+    principal: { openrouter_id: openai/gpt-6-astra }
+    economico: { openrouter_id: moonshotai/kimi-k3 }

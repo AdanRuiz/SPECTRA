@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+# proyectos locales (artefactos, estado, costos): no se versionan
+projects/*
+!projects/.gitkeep

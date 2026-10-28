@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "art_01_ideas",
+  "type": "object",
+  "required": ["titulo_propuesto", "problema_investigacion", "hipotesis_principal", "hipotesis_secundarias",
+               "brechas_conocimiento", "enfoques_metodologicos_sugeridos"],
+  "properties": {
+    "titulo_propuesto": {"type": "string", "minLength": 5},
+    "problema_investigacion": {"type": "string", "minLength": 20},
+    "pregunta_investigacion": {"type": "string"},
+    "hipotesis_principal": {
+      "type": "object",
+      "required": ["id", "enunciado", "riesgo_novedad", "trabajos_similares"],
+      "properties": {
+        "id": {"type": "string"},
+        "enunciado": {"type": "string", "minLength": 10},
+        "riesgo_novedad": {"enum": ["bajo", "medio", "alto"]},
+        "justificacion_riesgo": {"type": "string"},
+        "trabajos_similares": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "hipotesis_secundarias": {"type": "array", "items": {"type": "object", "required": ["id", "enunciado"]}},
+    "brechas_conocimiento": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+    "enfoques_metodologicos_sugeridos": {
+      "type": "array", "minItems": 2,
+      "items": {"type": "object", "required": ["nombre", "pros", "contras"]}
+    },
+    "contribuciones_esperadas": {"type": "array", "items": {"type": "string"}}
+  }
+}
