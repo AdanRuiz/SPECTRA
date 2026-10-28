@@ -94,6 +94,14 @@ def test_structure_and_similarity():
     assert r["valor"] > 0.5 and not r["ok"]
 
 
+def test_comparative_tables_gate():
+    tabla = "| Concepto | Definición | Fuente |\n|---|---|---|\n| A | x | [@a] |\n| B | y | [@b] |\n"
+    ok = f"# T\n## Marco Teórico\nTexto.\n\n{tabla}\nTabla 1. Comparativa.\n## Trabajos Relacionados\nTexto.\n{tabla}\n## Metodología\n"
+    assert gates.check_comparative_tables(ok)["ok"]
+    sin = "# T\n## Marco Teórico\nTexto.\n" + tabla + "\nUn párrafo largo después de la tabla. " * 20 + "\n## Trabajos Relacionados\nSolo texto.\n"
+    assert gates.check_comparative_tables(sin)["faltantes"] == ["Marco Teórico", "Trabajos Relacionados"]
+
+
 def test_bib_parse_format_and_build_offline():
     bib = '@article{lamport1978time,\n  title={Time, clocks, and the ordering of events},\n  author={Lamport, Leslie},\n  year={1978},\n  journal={CACM}, doi={10.1145/359545.359563}\n}'
     p = parse_bib(bib)

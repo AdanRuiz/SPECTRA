@@ -17,7 +17,7 @@ from .artifacts import ArtifactStore, now_iso
 from .bib import build_bib
 from .compile import compile_paper
 from .config import Config
-from .gates import check_citations, check_numbers, check_similarity, check_structure, numbers_in
+from .gates import check_citations, check_comparative_tables, check_numbers, check_similarity, check_structure, numbers_in
 from .hitl import HITL
 from .providers import ProviderError
 from .state import BudgetExceeded, CostLog, State
@@ -205,10 +205,12 @@ class Context:
         cit = check_citations(draft, bib_text(self))
         num = check_numbers(draft, strict, allp, g)
         est = check_structure(draft, req)
+        tab = check_comparative_tables(draft)
         sim = check_similarity(draft, self.similarity_sources(), int(g.get("ngram_similitud", 8)), float(g.get("similitud_max", 0.15)))
         return {"citas_existentes": {"ok": cit["ok"], "faltantes": cit["faltantes"]},
                 "numeros_consistentes": {"ok": num["ok"], "discrepancias": num["discrepancias"]},
                 "estructura_valida": {"ok": est["ok"], "faltantes": est["faltantes"]},
+                "tablas_comparativas": {"ok": tab["ok"], "faltantes": tab["faltantes"]},
                 "similitud_max": {"ok": sim["ok"], "valor": sim["valor"], "fuente": sim["fuente_max"]}}
 
 
@@ -678,6 +680,9 @@ class Orchestrator:
             if d is None:
                 return None
         self.mark("D2_COMPILA", "ok", res.get("motor", ""))
+        if self.st.data.pop("detener_tras_D2", False):     # `spectra revise --sin-peer`
+            self.st["entregado"] = False
+            return "FIN"
         return "S10_PEER"
 
     def do_S10_PEER(self):

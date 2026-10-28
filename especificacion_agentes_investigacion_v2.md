@@ -27,6 +27,8 @@
 | 11 | D2 con dos motores: Pandoc+LaTeX si existen; si no, motor interno Markdown→HTML/LaTeX y PDF con Edge/Chrome *headless* | Funciona sin TeX instalado |
 | 12 | Vista previa `.svg` de los `.drawio` generada por SPECTRA (sin depender del CLI de draw.io) | Las figuras entran al paper |
 | 13 | Repositorios adicionales de solo lectura (p. ej. un fork de Mixxx) con rutas incluidas explícitas | Integraciones que viven fuera del repo principal |
+| 14 | **Tablas comparativas obligatorias** al final de *Marco Teórico* y de *Trabajos Relacionados* (puerta dura en A7 y A8; A2 entrega la del marco) | Que todo artículo las incluya |
+| 15 | Comando `spectra revise` para reabrir un proyecto terminado (A7 → A8 → H3 → D2, con o sin nuevo Peer Review) | Ajustes del investigador después de FIN |
 
 ### 0.2 Cambios de v2 respecto a v1 (se mantienen)
 
@@ -306,6 +308,7 @@ python -m spectra decide <H> <opcion> [-c "..."]      # opciones especiales (med
 python -m spectra edit <H> <artefacto> <archivo>      # importar un artefacto editado (incluye .drawio)
 python -m spectra plan | record [archivo]             # usados por la skill de Claude Code
 python -m spectra gates [borrador.md] | compile       # puertas duras / D2 a mano
+python -m spectra revise -c "..." [--sin-peer]       # reabrir un proyecto (incluso en FIN): A7 -> A8 -> H3 -> D2 (-> A10)
 python -m spectra sync-agents | models-check
 ```
 
@@ -341,7 +344,7 @@ python -m spectra sync-agents | models-check
 * **Action:** `buscar_corpus` (BM25 sobre `corpus/`), `listar_corpus`, `buscar_academico` + `agregar_al_corpus` (descarga el PDF open access o indexa la ficha con resumen).
 * **Ingesta del corpus (sin LLM):** PDFs del usuario (`corpus/pdfs`, `existentes.corpus_pdfs`), trabajos similares de A1 (por DOI) y, con implementación existente, los documentos del repositorio.
 * **Behavior:** sintetiza conceptos fundacionales. **Prohibido citar lo que no esté en el corpus** (puerta: toda clave citada ∈ corpus). Cita con página si el documento está paginado: `[@clave, p. 12]`.
-* **Salida → `art_02_marco.md`**: conceptos (definición, formulación, relevancia), mapeo de variables y la sección **Referencias usadas**, que SPECTRA genera deterministamente a partir de las citas.
+* **Salida → `art_02_marco.md`**: conceptos (definición, formulación, relevancia), mapeo de variables, **tabla comparativa del marco teórico** (obligatoria: concepto · definición o aportación · fuente · relación con las hipótesis · cómo lo instancia este trabajo) y la sección **Referencias usadas**, que SPECTRA genera deterministamente a partir de las citas.
 
 ---
 
@@ -406,8 +409,8 @@ python -m spectra sync-agents | models-check
 ### Agente 7: Redactor Académico (Cubing + POWER)
 * **Modelos:** `anthropic/claude-sonnet-5.5` (subagente `a07-redactor`, model: sonnet) | `meta-llama/llama-4-maverick`
 * **Action:** sin búsqueda externa.
-* **Behavior:** POWER al proceso, Cubing a la discusión. Sigue `secciones_borrador` + **Limitaciones** + **Declaración de uso de IA**. Citas solo de `art_refs.bib`; números literales de art_05; distingue medido / inspeccionado / autoreportado; declara el preregistro post hoc; presenta los mecanismos sugeridos como plan de validación; incluye las figuras (`figuras/arquitectura.svg`, `figuras/mapa_mental.svg`). La declaración de IA se construye con los `meta.generado_por` reales de los artefactos.
-* **Comprobaciones antes de aceptar la salida:** citas ⊆ bib, secciones obligatorias presentes, empieza con `# Título` (si fallan, reintento con los errores).
+* **Behavior:** POWER al proceso, Cubing a la discusión. Sigue `secciones_borrador` + **Limitaciones** + **Declaración de uso de IA**. Citas solo de `art_refs.bib`; números literales de art_05; distingue medido / inspeccionado / autoreportado; declara el preregistro post hoc; presenta los mecanismos sugeridos como plan de validación; incluye las figuras (`figuras/arquitectura.svg`, `figuras/mapa_mental.svg`). **Tablas comparativas obligatorias:** la sección *Marco Teórico* termina con la tabla comparativa del marco teórico (una fila por concepto de art_02) y la sección *Trabajos Relacionados* termina con la tabla comparativa del estado del arte (una fila por trabajo o familia de art_03 y una última fila con este trabajo; columnas mínimas: trabajo, enfoque, qué cubre, métricas tal cual o "—", limitaciones). Cada una va seguida solo de su leyenda. No nombra artefactos internos (art_05, R6...) fuera de la Declaración de uso de IA. La declaración de IA se construye con los `meta.generado_por` reales de los artefactos.
+* **Comprobaciones antes de aceptar la salida:** citas ⊆ bib, secciones obligatorias presentes, tablas comparativas al final de Marco Teórico y Trabajos Relacionados, empieza con `# Título` (si fallan, reintento con los errores).
 * **Salida → `art_07_borrador_vN.md`** con `iteracion`, `responde_a` (art_08 / art_09 / art_10 / comentarios humanos) y `modo` en el front-matter.
 
 ---
@@ -480,6 +483,7 @@ costo: { tokens_entrada: 0, tokens_salida: 0, usd: 0.0 }
 | Toda cita ∈ `art_refs.bib` | `check_citations.py` | A4, A7, A8 |
 | Todo número del texto ∈ artefactos; en Resumen/Resultados ∈ art_05 | `check_numbers.py` (normaliza coma decimal y porcentajes; ignora años, enteros ≤ 12, citas, código, fórmulas, URLs, identificadores) | A8 |
 | Estructura = `secciones_borrador` + obligatorias | `check_structure` | A7, A8 |
+| Tablas comparativas al final de *Marco Teórico* y *Trabajos Relacionados* (≥ 3 columnas, ≥ 2 filas, solo leyenda después) | `check_comparative_tables` | A7, A8 |
 | Similitud máxima (n-gramas de 8 palabras) < umbral | `check_similarity` contra resúmenes de art_03 y el corpus | A8 |
 | Hash de art_04 = hash congelado | orquestador | A5, A10 |
 | Presupuesto no excedido (total y por agente) | `CostLog.check` | Antes de cada llamada |

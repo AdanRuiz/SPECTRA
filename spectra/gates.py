@@ -156,6 +156,39 @@ def check_structure(md: str, required: list[str]) -> dict:
     return {"ok": not faltan, "faltantes": faltan}
 
 
+COMPARATIVAS = {
+    "Marco Teórico": ("marco teorico", "marco conceptual"),
+    "Trabajos Relacionados": ("trabajos relacionados", "estado del arte"),
+}
+
+
+def check_comparative_tables(md: str, required: dict | None = None) -> dict:
+    """Cada sección indicada debe terminar con una tabla comparativa (tabla Markdown con ≥ 3 columnas
+    y ≥ 2 filas de datos, seguida como mucho de su leyenda)."""
+    required = required or COMPARATIVAS
+    lines = md.splitlines()
+    secs = [(i, norm_text(m.group(2))) for i, l in enumerate(lines) if (m := re.match(r"^(#{1,2})\s+(.+)$", l))]
+    faltan = []
+    for nombre, alias in required.items():
+        idx = next((k for k, (_, h) in enumerate(secs) if any(a in h for a in alias)), None)
+        if idx is None:
+            continue                          # la ausencia de la sección la reporta check_structure
+        start = secs[idx][0] + 1
+        end = secs[idx + 1][0] if idx + 1 < len(secs) else len(lines)
+        body = [l for l in lines[start:end] if l.strip() and not l.lstrip().startswith("###")]
+        trail = 0
+        while body and not body[-1].strip().startswith("|") and trail < 2 and len(body[-1]) < 400:
+            body.pop()                        # leyenda o nota corta tras la tabla
+            trail += 1
+        rows = []
+        while body and body[-1].strip().startswith("|"):
+            rows.insert(0, body.pop())
+        ok = len(rows) >= 4 and rows[0].count("|") >= 4 and re.match(r"^\s*\|?\s*:?-{2,}", rows[1] or "")
+        if not ok:
+            faltan.append(nombre)
+    return {"ok": not faltan, "faltantes": faltan}
+
+
 # --- similitud (n-gramas de palabras) -------------------------------------------------
 def _ngrams(text: str, n: int) -> set[tuple]:
     t = norm_text(text).split()

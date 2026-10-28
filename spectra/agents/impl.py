@@ -12,7 +12,7 @@ import yaml
 
 from .. import drawio
 from ..artifacts import sha256_bytes
-from ..gates import bib_keys, check_citations, check_structure, cited_keys, headings, validate_json
+from ..gates import bib_keys, check_citations, check_comparative_tables, check_structure, cited_keys, headings, validate_json
 from ..tools import academic
 from ..tools.repo import entorno
 from ..util import dumps, extract_fenced, extract_json, norm_text, strip_outer_fence, truncate
@@ -509,6 +509,9 @@ class RedactorAgent(Agent):
                 "# Estructura obligatoria (art_06.secciones_borrador + obligatorias)\n" + "\n".join(f"- {s}" for s in self.required_sections()),
                 f"# Claves de art_refs.bib (cita SOLO estas, formato [@clave])\n{bib_listing(self.ctx)}",
                 "# Figuras disponibles (inclúyelas con ![Leyenda](ruta))\n" + ("\n".join(figs) or "(ninguna)"),
+                "# Tablas comparativas obligatorias\n- Al final de «Marco Teórico»: tabla comparativa de los conceptos o "
+                "marcos (a partir de art_02).\n- Al final de «Trabajos Relacionados»: tabla comparativa del estado del arte "
+                "frente a este trabajo (a partir de art_03.tabla_comparativa_resumen y sus artículos).",
                 f"# art_01_ideas\n```json\n{truncate(dumps(self.art('art_01_ideas')), 12000)}\n```",
                 f"# art_02_marco\n{self.art_text('art_02_marco', 25000)}",
                 f"# art_03 (resumen)\n```json\n{truncate(dumps(compact_lit(self.art('art_03_literatura'))), 25000)}\n```",
@@ -528,6 +531,8 @@ class RedactorAgent(Agent):
         md = strip_outer_fence(md)
         errs = [f"Cita inexistente en art_refs.bib: @{k}" for k in check_citations(md, bib_text(self.ctx))["faltantes"]]
         errs += [f"Falta la sección obligatoria: {s}" for s in check_structure(md, self.required_sections())["faltantes"]]
+        errs += [f"La sección «{s}» debe terminar con su tabla comparativa (tabla Markdown, ≥ 3 columnas y ≥ 2 filas, "
+                 "seguida como mucho de su leyenda)" for s in check_comparative_tables(md)["faltantes"]]
         if not md.lstrip().startswith("# "):
             errs.append("El documento debe empezar con '# Título'")
         return errs

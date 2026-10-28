@@ -174,6 +174,23 @@ def cmd_gates(a):
     print(dumps(ctx.hard_gates(split_front_matter(text)[1])))
 
 
+def cmd_revise(a):
+    """Reabre un proyecto (incluso en FIN) para que A7 revise el borrador con un comentario del investigador."""
+    cfg = _cfg(a)
+    from .orchestrator import Orchestrator
+    o = Orchestrator(cfg)
+    st = o.st
+    st["feedback_pendiente"] = o.comment_artifact("REVISE", a.comentario)
+    st["modo_ronda"] = "peer"                 # tras aprobar A8 va a H3 (sin repetir el Asesor)
+    st["iteracion_revision"] = 0
+    st["entregado"] = False
+    if a.sin_peer:
+        st["detener_tras_D2"] = True
+    st.set_state("S07_REDACCION", "revisión solicitada por el investigador")
+    st.log("REVISE", "abierta", a.comentario[:200])
+    print(f"Revisión abierta. Continúa con: python -m spectra run -p {a.proyecto}")
+
+
 def cmd_compile(a):
     cfg = _cfg(a)
     from .orchestrator import Orchestrator
@@ -219,6 +236,9 @@ def main(argv=None):
     p = P("gates", cmd_gates, help="ejecuta las puertas duras sobre un borrador")
     p.add_argument("archivo", nargs="?")
     P("compile", cmd_compile, help="ejecuta D2 sobre el último borrador")
+    p = P("revise", cmd_revise, help="reabre el proyecto: A7 revisa con tu comentario -> A8 -> H3 -> D2 (-> A10)")
+    p.add_argument("-c", "--comentario", required=True)
+    p.add_argument("--sin-peer", action="store_true", help="terminar tras compilar, sin nuevo Peer Review")
     P("sync-agents", cmd_sync, help="genera .claude/agents y la skill desde agents/specs + config")
     P("models-check", cmd_models, help="verifica los IDs de modelo contra OpenRouter")
     a = ap.parse_args(argv)

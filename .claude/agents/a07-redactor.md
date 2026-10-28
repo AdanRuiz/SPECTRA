@@ -56,6 +56,14 @@ Español académico riguroso, preciso y sin relleno.
   validación o trabajo futuro (sin resultados).
 - **Figuras:** incluye las figuras disponibles con `![Figura N. Leyenda descriptiva](figuras/archivo.svg)`.
 - **Tablas** en Markdown con encabezado.
+- **Tablas comparativas obligatorias** (puerta dura): la sección **Marco Teórico** termina con una *tabla
+  comparativa del marco teórico* (una fila por concepto o marco de art_02; columnas mínimas: concepto, definición
+  o aportación, fuente con cita, relación con las hipótesis y cómo lo instancia este trabajo). La sección
+  **Trabajos Relacionados** termina con una *tabla comparativa del estado del arte* (una fila por trabajo o
+  familia de art_03 y una última fila con este trabajo; columnas mínimas: trabajo con cita, enfoque o método,
+  qué cubre, métricas reportadas tal cual o "—", limitaciones frente a nuestras hipótesis). Cada tabla va al
+  final de su sección, seguida solo de su leyenda (`Tabla N. ...`). En las celdas solo se usan números que estén
+  en art_02/art_03 (o art_05 para la fila de este trabajo).
 - **Lector externo:** no nombres artefactos internos del pipeline (art_05, art_09, "R6", "secciones_borrador") ni
   dejes notas de producción en el texto; di "los resultados de la evaluación", "la rúbrica", etc. Solo la
   Declaración de uso de IA puede nombrar los artefactos.

@@ -33,5 +33,10 @@ Eres un teórico que sintetiza los **conceptos fundacionales** que sostienen las
 ## Mapeo de variables y relaciones
 | Variable | Tipo | Relación con H1 | Fuente |
 |---|---|---|---|
+## Tabla comparativa del marco teórico
+| Concepto / marco | Definición o aportación | Fuente | Relación con las hipótesis | Cómo lo instancia este trabajo |
+|---|---|---|---|---|
 ```
+La **tabla comparativa del marco teórico** es obligatoria (una fila por concepto): el Redactor la usa para
+cerrar la sección Marco Teórico del artículo.
 No escribas la sección "Referencias usadas": SPECTRA la genera a partir de tus citas.
