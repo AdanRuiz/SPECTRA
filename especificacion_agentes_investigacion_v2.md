@@ -29,6 +29,7 @@
 | 13 | Repositorios adicionales de solo lectura (p. ej. un fork de Mixxx) con rutas incluidas explícitas | Integraciones que viven fuera del repo principal |
 | 14 | **Tablas comparativas obligatorias** al final de *Marco Teórico* y de *Trabajos Relacionados* (puerta dura en A7 y A8; A2 entrega la del marco) | Que todo artículo las incluya |
 | 15 | Comando `spectra revise` para reabrir un proyecto terminado (A7 → A8 → H3 → D2, con o sin nuevo Peer Review) | Ajustes del investigador después de FIN |
+| 16 | D2 genera `art_paper.docx` editable con citas y bibliografía como campos vivos de Zotero; comando `spectra zotero` | Edición final en Word con el gestor de referencias del investigador |
 
 ### 0.2 Cambios de v2 respecto a v1 (se mantienen)
 
@@ -307,7 +308,8 @@ python -m spectra approve|reject <H> [-c "..."]       # responder un HITL
 python -m spectra decide <H> <opcion> [-c "..."]      # opciones especiales (medir, a4, a7, fin)
 python -m spectra edit <H> <artefacto> <archivo>      # importar un artefacto editado (incluye .drawio)
 python -m spectra plan | record [archivo]             # usados por la skill de Claude Code
-python -m spectra gates [borrador.md] | compile       # puertas duras / D2 a mano
+python -m spectra gates [borrador.md] | compile       # puertas duras / D2 a mano (PDF, HTML, TeX y DOCX)
+python -m spectra zotero [--etiqueta X]              # importa art_refs.bib a Zotero (app abierta)
 python -m spectra revise -c "..." [--sin-peer]       # reabrir un proyecto (incluso en FIN): A7 -> A8 -> H3 -> D2 (-> A10)
 python -m spectra sync-agents | models-check
 ```
@@ -435,7 +437,8 @@ python -m spectra sync-agents | models-check
 ### Paso D2: Compilador (determinista)
 * **Implementación:** `spectra/compile.py` (`scripts/compile.py`).
 * **Motores:** `pandoc` (+ `--citeproc` y xelatex si existen) o **interno**: Markdown → HTML (citas APA/IEEE resueltas desde `art_refs.bib`, tablas, figuras SVG incrustadas, MathJax) y Markdown → LaTeX (`biblatex`, `\parencite`); PDF con Edge/Chrome *headless*.
-* **Salida:** `paper/art_paper.{md,html,tex,pdf}` + `paper/figuras/`. **Fallo:** **HD2**.
+* **Word editable con Zotero** (`spectra/docx_export.py` + `spectra/docx/build.js`, docx-js; `compilacion.docx`, `compilacion.zotero`): `art_paper.docx` con estilos de título, tablas, figuras (SVG → PNG con el navegador), fórmulas en línea como texto con subíndices/superíndices y **cada cita como campo vivo de Zotero** (`ADDIN ZOTERO_ITEM CSL_CITATION`, con localizador de página) más la bibliografía como `ADDIN ZOTERO_BIBL`, estilo APA y preferencias en `ZOTERO_PREF_n`. Si Zotero está instalado, cada cita se enlaza por título con el ítem de la biblioteca local (lectura inmutable de `zotero.sqlite`, sin bloquear la app); si no, el campo lleva los datos CSL incrustados. En Word, *Zotero → Refresh* regenera citas y bibliografía. `python -m spectra zotero` importa `art_refs.bib` a la colección seleccionada en Zotero con la etiqueta `SPECTRA-<proyecto>`. Requiere Node.js (el primer uso instala `docx` con npm); un fallo del .docx nunca bloquea D2.
+* **Salida:** `paper/art_paper.{md,html,tex,pdf,docx}` + `paper/figuras/`. Si un archivo está abierto en otro programa, se escribe como `*_nuevo.*`. **Fallo:** **HD2**.
 
 ---
 
@@ -515,7 +518,7 @@ si no aprueba y N == max_iter   → H_ESCALA: aceptar, una vuelta más con comen
 * **Evidencia tipificada:** lo autoreportado por un README nunca se presenta como medido.
 * **Similitud:** chequeo en A8; el informe queda en art_08.
 * **Licencias:** datasets y PDFs con su licencia en art_04 y en el corpus.
-* **Paquete de entrega (`FIN`, carpeta `entrega/`):** `art_paper.{pdf,tex,html,md}`, `art_refs.bib`, `arquitectura.drawio/.svg`, `mapa_mental.drawio/.svg[/.png]`, art_04, art_05, art_08, art_10, `preregistro.json` y `costos.jsonl`. El código queda identificado por repositorio + commit en art_05.
+* **Paquete de entrega (`FIN`, carpeta `entrega/`):** `art_paper.{pdf,docx,tex,html,md}`, `art_refs.bib`, `arquitectura.drawio/.svg`, `mapa_mental.drawio/.svg[/.png]`, art_04, art_05, art_08, art_10, `preregistro.json` y `costos.jsonl`. El código queda identificado por repositorio + commit en art_05.
 
 ---
 

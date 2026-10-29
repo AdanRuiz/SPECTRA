@@ -16,6 +16,16 @@ CITE_GROUP = re.compile(r"\[([^\[\]]*?@[^\[\]]+?)\]")
 CITE_ONE = re.compile(r"-?@([\w:.#$%&+?<>~/-]*\w)(?:\s*,\s*([^;\]]+))?")
 
 
+def split_row(line: str) -> list[str]:
+    r"""Celdas de una fila de tabla Markdown; respeta los pipes escapados (\|)."""
+    t = line.strip()
+    if t.startswith("|"):
+        t = t[1:]
+    if t.endswith("|") and not t.endswith(r"\|"):
+        t = t[:-1]
+    return [c.strip().replace("\x00", "|") for c in t.replace(r"\|", "\x00").split("|")]
+
+
 # --- citas ---------------------------------------------------------------------
 class Citer:
     def __init__(self, bib: dict, estilo: str = "apa"):
@@ -138,11 +148,11 @@ def md_to_html_body(md: str, citer: Citer, base: Path) -> str:
             i += 1
             continue
         if l.strip().startswith("|") and i + 1 < len(lines) and re.match(r"^\s*\|?\s*:?-{2,}", lines[i + 1]):
-            head = [c.strip() for c in l.strip().strip("|").split("|")]
+            head = split_row(l)
             j = i + 2
             rows = []
             while j < len(lines) and lines[j].strip().startswith("|"):
-                rows.append([c.strip() for c in lines[j].strip().strip("|").split("|")])
+                rows.append(split_row(lines[j]))
                 j += 1
             t = "<table><thead><tr>" + "".join(f"<th>{_inline(c, citer, base)}</th>" for c in head) + "</tr></thead><tbody>"
             t += "".join("<tr>" + "".join(f"<td>{_inline(c, citer, base)}</td>" for c in r) + "</tr>" for r in rows)
@@ -262,10 +272,10 @@ def md_to_latex(md: str, citer: Citer, titulo: str, bibfile: str) -> str:
             i = j + 1
             continue
         if l.strip().startswith("|") and i + 1 < len(lines) and re.match(r"^\s*\|?\s*:?-{2,}", lines[i + 1]):
-            head = [c.strip() for c in l.strip().strip("|").split("|")]
+            head = split_row(l)
             j, rows = i + 2, []
             while j < len(lines) and lines[j].strip().startswith("|"):
-                rows.append([c.strip() for c in lines[j].strip().strip("|").split("|")])
+                rows.append(split_row(lines[j]))
                 j += 1
             cols = "p{%.2f\\linewidth}" % (0.95 / max(1, len(head)))
             t = ["\\begin{table}[h]\\centering\\small\\begin{tabular}{" + cols * len(head) + "}\\toprule",
@@ -373,14 +383,33 @@ def compile_paper(md: str, bib_text: str, out_dir: Path, cfg_comp: dict, titulo:
     b = find_browser(cfg_comp.get("pdf_navegador", "auto"))
     if b:
         pdf = out_dir / "art_paper.pdf"
-        if pdf.exists():
-            pdf.unlink()
-        if html_to_pdf(hp, pdf, b):
-            res["pdf"] = str(pdf)
+        tmp = out_dir / "art_paper.tmp.pdf"
+        if tmp.exists():
+            tmp.unlink()
+        if html_to_pdf(hp, tmp, b):
+            try:
+                os.replace(tmp, pdf)
+                res["pdf"] = str(pdf)
+            except PermissionError:          # el PDF anterior está abierto en un visor
+                alt = out_dir / "art_paper_nuevo.pdf"
+                os.replace(tmp, alt)
+                res["pdf"] = str(alt)
+                res["errores"].append(f"art_paper.pdf está abierto en otro programa; el PDF nuevo quedó en {alt.name}")
         else:
             res["errores"].append("el navegador no generó el PDF")
     else:
         res["errores"].append("sin Pandoc+LaTeX ni navegador: solo HTML y .tex")
+    if cfg_comp.get("docx", True):
+        try:
+            from .docx_export import export_docx
+            d = export_docx(md, bib_text, out_dir / "art_paper.docx", out_dir, zotero=cfg_comp.get("zotero", True))
+        except Exception as e:                    # el .docx nunca bloquea la compilación
+            d = {"error": f"{type(e).__name__}: {e}"}
+        if d.get("error"):
+            res["errores"].append(f"docx: {d['error']}")
+        else:
+            res["docx"] = d["docx"]
+            res["docx_zotero"] = {k: d[k] for k in ("citas_zotero", "enlazadas_biblioteca", "referencias")}
     return res
 
 

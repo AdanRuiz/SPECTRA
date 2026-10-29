@@ -5,3 +5,5 @@ __pycache__/
 # proyectos locales (artefactos, estado, costos): no se versionan
 projects/*
 !projects/.gitkeep
+spectra/docx/node_modules/
+spectra/docx/package-lock.json

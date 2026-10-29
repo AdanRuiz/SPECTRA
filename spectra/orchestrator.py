@@ -726,9 +726,16 @@ class Orchestrator:
         out = self.ctx.project_dir / "entrega"
         out.mkdir(exist_ok=True)
         pd = self.ctx.paper_dir
-        for f in ("art_paper.pdf", "art_paper.tex", "art_paper.html", "art_paper.md"):
-            if (pd / f).exists():
-                shutil.copyfile(pd / f, out / f)
+        nuevo = pd / "art_paper_nuevo.pdf"
+        for f in ("art_paper.pdf", "art_paper.docx", "art_paper.tex", "art_paper.html", "art_paper.md"):
+            src = nuevo if f == "art_paper.pdf" and nuevo.exists() and (not (pd / f).exists() or
+                                                                         nuevo.stat().st_mtime > (pd / f).stat().st_mtime) else pd / f
+            if src.exists():
+                try:
+                    shutil.copyfile(src, out / f)
+                except PermissionError:
+                    shutil.copyfile(src, out / f.replace(".", "_nuevo.", 1))
+                    self.ctx.trace("FIN", f"{f} está abierto en otro programa; copiado como {f.replace('.', '_nuevo.', 1)}")
         for f in ("art_refs.bib", "arquitectura.drawio", "arquitectura.svg", "mapa_mental.drawio", "mapa_mental.svg", "mapa_mental.png"):
             if (self.store.dir / f).exists():
                 shutil.copyfile(self.store.dir / f, out / f)

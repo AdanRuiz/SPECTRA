@@ -87,6 +87,8 @@ compilacion:
   motor: auto                    # auto | pandoc | interno
   csl: apa                       # apa | ieee
   pdf_navegador: auto            # auto | ruta a msedge/chrome | ninguno
+  docx: true                     # art_paper.docx editable (requiere Node.js; spectra/docx)
+  zotero: true                   # citas como campos de Zotero enlazados a tu biblioteca local si existe
 
 proveedores:
   openrouter:

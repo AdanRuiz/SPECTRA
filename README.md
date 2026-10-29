@@ -15,6 +15,19 @@ python -m pytest -q tests                       # pruebas offline del núcleo
 ```
 
 Opcional: Pandoc + xelatex (si no están, D2 usa su motor interno y Edge/Chrome para el PDF).
+Para el Word editable (`art_paper.docx`) hace falta Node.js; la primera compilación instala `docx` en `spectra/docx`.
+
+## Word y Zotero
+
+D2 genera `art_paper.docx` con cada cita como campo de Zotero y la bibliografía como campo `ZOTERO_BIBL`.
+Para enlazar las citas con tu biblioteca:
+
+```sh
+python -m spectra zotero -p projects/mi-paper     # Zotero abierto: importa art_refs.bib con la etiqueta SPECTRA-mi-paper
+python -m spectra compile -p projects/mi-paper    # regenera el .docx enlazado a esos ítems
+```
+
+En Word: *Zotero → Refresh* para regenerar citas y bibliografía, o cambiar de estilo.
 
 ## Uso
 

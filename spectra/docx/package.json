@@ -1,0 +1,6 @@
+{
+  "name": "spectra-docx",
+  "private": true,
+  "description": "Generador .docx de SPECTRA (docx-js)",
+  "dependencies": { "docx": "^9.5.0" }
+}

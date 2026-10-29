@@ -191,6 +191,28 @@ def cmd_revise(a):
     print(f"Revisión abierta. Continúa con: python -m spectra run -p {a.proyecto}")
 
 
+def cmd_zotero(a):
+    """Importa art_refs.bib a Zotero (app abierta) con la etiqueta SPECTRA-<proyecto>, en la colección seleccionada."""
+    import re
+    import time
+    import requests
+    cfg = _cfg(a)
+    bib = (cfg.project_dir / "artifacts" / "art_refs.bib").read_text(encoding="utf-8")
+    tag = a.etiqueta or f"SPECTRA-{cfg.project_dir.name}"
+    bib = re.sub(r"(@\w+\s*\{\s*[^,\s]+\s*,)", r"\1\n  keywords = {" + tag + "},", bib)
+    base = "http://127.0.0.1:23119/connector"
+    try:
+        sel = requests.post(f"{base}/getSelectedCollection", json={}, timeout=5).json()
+    except requests.RequestException:
+        sys.exit("Zotero no está abierto (no responde en 127.0.0.1:23119).")
+    r = requests.post(f"{base}/import?session=spectra-{int(time.time())}", data=bib.encode("utf-8"),
+                      headers={"Content-Type": "application/x-bibtex"}, timeout=120)
+    r.raise_for_status()
+    items = r.json()
+    print(f"{len(items)} referencias importadas en «{sel.get('name')}» ({sel.get('libraryName')}) con la etiqueta {tag}.")
+    print("Las citas del .docx se enlazan por título con estos ítems al recompilar: python -m spectra compile -p", a.proyecto)
+
+
 def cmd_compile(a):
     cfg = _cfg(a)
     from .orchestrator import Orchestrator
@@ -236,6 +258,8 @@ def main(argv=None):
     p = P("gates", cmd_gates, help="ejecuta las puertas duras sobre un borrador")
     p.add_argument("archivo", nargs="?")
     P("compile", cmd_compile, help="ejecuta D2 sobre el último borrador")
+    p = P("zotero", cmd_zotero, help="importa art_refs.bib a Zotero (colección seleccionada) con una etiqueta")
+    p.add_argument("--etiqueta")
     p = P("revise", cmd_revise, help="reabre el proyecto: A7 revisa con tu comentario -> A8 -> H3 -> D2 (-> A10)")
     p.add_argument("-c", "--comentario", required=True)
     p.add_argument("--sin-peer", action="store_true", help="terminar tras compilar, sin nuevo Peer Review")

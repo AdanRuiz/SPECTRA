@@ -25,7 +25,7 @@ def misc_entry(key: str, meta: dict, tipo: str = "misc") -> str:
         "year": meta.get("anio") or "",
         "howpublished": _field_escape(meta.get("venue") or ""),
         "url": meta.get("url") or "",
-        "doi": meta.get("doi") or "",
+        "doi": academic.clean_doi(meta.get("doi")) or "",
         "eprint": meta.get("arxiv") or "",
         "note": _field_escape(meta.get("nota") or ""),
         "version": _field_escape(meta.get("version") or ""),

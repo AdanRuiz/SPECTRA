@@ -121,6 +121,8 @@ def test_compile_internal(tmp_path):
     md = "# Título\n## Resumen\nTexto [@ruiz2026x] con **negrita** y $x^2$.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n- uno\n- dos\n"
     h = md_to_html(md, bib, "apa", tmp_path)
     assert "(Ruiz, 2026)" in h and "<table>" in h and "Referencias" in h
+    h2 = md_to_html("| a | b |\n|---|---|\n| mediana de \\|e\\| | 2 |\n", bib, "apa", tmp_path)
+    assert "<td>mediana de |e|</td>" in h2
     tex = md_to_latex(md, Citer(parse_bib(bib)), "", "art_refs.bib")
     assert "\\parencite{ruiz2026x}" in tex and "\\begin{itemize}" in tex
 
@@ -174,3 +176,22 @@ def test_saltar_requires_artifacts(tmp_path):
     o = Orchestrator(Config(d))
     with pytest.raises(RuntimeError):
         o.should_skip("S05_IMPL")
+
+
+def test_docx_zotero_fields(tmp_path):
+    import shutil as _sh
+    import zipfile
+    from spectra.docx_export import build_doc_json, export_docx, latex_runs
+    bib = "@misc{ruiz2026x, title={Spec}, author={Ruiz, Adan}, year={2026}, doi={—}}"
+    md = "# Título\n## Resumen\nTexto [@ruiz2026x, p. 3] y $rtt_{\min} \le 2$.\n\n| a | b | c |\n|---|---|---|\n| 1 | \|e\| | 3 |\n"
+    d = build_doc_json(md, bib, tmp_path, tmp_path, zotero=False)
+    assert d["citations"][0]["code"].startswith("ADDIN ZOTERO_ITEM CSL_CITATION")
+    assert '"locator": "3"' in d["citations"][0]["code"] and "DOI" not in d["citations"][0]["code"]
+    assert any(r.get("subScript") and r["text"] == "min" for r in latex_runs(r"rtt_{\min}"))
+    if not _sh.which("node"):
+        return
+    r = export_docx(md, bib, tmp_path / "p.docx", tmp_path, zotero=False)
+    assert "error" not in r, r
+    xml = zipfile.ZipFile(r["docx"]).read("word/document.xml").decode("utf-8")
+    assert "ZOTERO_ITEM CSL_CITATION" in xml and "ZOTERO_BIBL" in xml and "§§" not in xml
+    assert "ZOTERO_PREF_1" in zipfile.ZipFile(r["docx"]).read("docProps/custom.xml").decode("utf-8")

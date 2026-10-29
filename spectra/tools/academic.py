@@ -38,7 +38,7 @@ def clean_doi(doi: str | None) -> str | None:
     if not doi:
         return None
     d = re.sub(r"^(https?://(dx\.)?doi\.org/|doi:)", "", doi.strip(), flags=re.I)
-    return d.lower() or None
+    return d.lower() if d.startswith("10.") else None      # "—", "n/a"... no son DOI
 
 
 def _abstract_from_inverted(inv: dict | None) -> str:
