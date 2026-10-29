@@ -10,7 +10,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .bib import cite_label, format_ref, parse_bib
+from .bib import cite_label, format_ref, parse_bib, set_lang
 
 CITE_GROUP = re.compile(r"\[([^\[\]]*?@[^\[\]]+?)\]")
 CITE_ONE = re.compile(r"-?@([\w:.#$%&+?<>~/-]*\w)(?:\s*,\s*([^;\]]+))?")
@@ -215,6 +215,9 @@ figcaption { font-size: 9.5pt; color: #333; margin-top: .3em; }
 """
 
 
+REFS_TITLE = ["Referencias"]
+
+
 def md_to_html(md: str, bib_text: str, estilo: str, base: Path, titulo: str = "") -> str:
     citer = Citer(parse_bib(bib_text), estilo)
     body = md_to_html_body(md, citer, base)
@@ -223,7 +226,7 @@ def md_to_html(md: str, bib_text: str, estilo: str, base: Path, titulo: str = ""
           '<script async src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>')
     return (f'<!doctype html><html lang="es"><head><meta charset="utf-8"><title>{html.escape(titulo)}</title>'
             f'<style>{CSS}</style>{mj}</head><body>{body}'
-            + (f'<h2>Referencias</h2>\n{refs}' if refs else "") + "</body></html>")
+            + (f'<h2>{REFS_TITLE[0]}</h2>\n{refs}' if refs else "") + "</body></html>")
 
 
 # --- Markdown mínimo -> LaTeX ------------------------------------------------------------
@@ -353,6 +356,9 @@ def compile_paper(md: str, bib_text: str, out_dir: Path, cfg_comp: dict, titulo:
     md_path = out_dir / "art_paper.md"
     md_path.write_text(md, encoding="utf-8")
     estilo = cfg_comp.get("csl", "apa")
+    idioma = str(cfg_comp.get("idioma", "es"))
+    set_lang(idioma)
+    REFS_TITLE[0] = "References" if idioma.startswith("en") else "Referencias"
     motor = cfg_comp.get("motor", "auto")
     res: dict = {"motor": None, "errores": []}
     if motor in ("auto", "pandoc") and shutil.which("pandoc"):
@@ -402,7 +408,7 @@ def compile_paper(md: str, bib_text: str, out_dir: Path, cfg_comp: dict, titulo:
     if cfg_comp.get("docx", True):
         try:
             from .docx_export import export_docx
-            d = export_docx(md, bib_text, out_dir / "art_paper.docx", out_dir, zotero=cfg_comp.get("zotero", True))
+            d = export_docx(md, bib_text, out_dir / "art_paper.docx", out_dir, zotero=cfg_comp.get("zotero", True), idioma=idioma)
         except Exception as e:                    # el .docx nunca bloquea la compilación
             d = {"error": f"{type(e).__name__}: {e}"}
         if d.get("error"):

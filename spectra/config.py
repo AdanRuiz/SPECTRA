@@ -49,6 +49,20 @@ class ModelChoice:
         return f"{self.proveedor}:{self.modelo}"
 
 
+def model_family(mc: "ModelChoice") -> str:
+    """Familia (laboratorio) de un modelo: prefijo del id de OpenRouter; Claude Code y `claude -p` son anthropic."""
+    if mc.proveedor in ("claude_code", "claude_cli"):
+        return "anthropic"
+    m = (mc.modelo or "").lower()
+    if "/" in m:
+        return m.split("/", 1)[0]
+    for fam in ("claude", "gpt", "gemini", "llama", "qwen", "deepseek", "kimi", "mistral", "grok"):
+        if fam in m:
+            return {"claude": "anthropic", "gpt": "openai", "gemini": "google", "llama": "meta-llama",
+                    "kimi": "moonshotai", "grok": "x-ai"}.get(fam, fam)
+    return m or "desconocida"
+
+
 class Config:
     def __init__(self, project_dir: Path, overrides: dict | None = None):
         self.root = ROOT
@@ -124,6 +138,18 @@ class Config:
                            subagente=(cc or {}).get("subagente"),
                            claude_code_modelo=(cc or {}).get("modelo"),
                            extra={k: v for k, v in spec.items() if k not in ("claude_code", "openrouter_id", "modelo", "proveedor")})
+
+    def family_violations(self) -> list[str]:
+        """Pares (redactor, evaluador) que deben ser de familias distintas (`puertas.familias_distintas`)."""
+        out = []
+        for a, b in self.get("puertas.familias_distintas", [["a07_redactor", "a08_revisor"], ["a07_redactor", "a10_peer_review"]]):
+            try:
+                fa, fb = model_family(self.resolve_model(a)), model_family(self.resolve_model(b))
+            except (KeyError, ValueError):
+                continue
+            if fa == fb:
+                out.append(f"{a} y {b} son de la misma familia ({fa})")
+        return out
 
     def provider_conf(self, name: str) -> dict:
         p = self.data.get("proveedores", {}).get(name)

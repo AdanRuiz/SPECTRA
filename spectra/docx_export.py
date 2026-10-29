@@ -48,13 +48,19 @@ def zotero_db() -> Path | None:
 
 
 def zotero_lookup(bib: dict, db: Path | None = None) -> tuple[dict, dict]:
-    """{clave_bib: {id, uri}} por coincidencia de título con la biblioteca local (lectura inmutable, sin bloquear
+    """{clave_bib: {id, uri}} por coincidencia de título con la biblioteca local (copia temporal + WAL, sin bloquear
     Zotero) y la info de la biblioteca."""
     db = db or zotero_db()
     if not db:
         return {}, {}
     try:
-        c = sqlite3.connect(f"file:///{str(db).replace(os.sep, '/')}?mode=ro&immutable=1", uri=True, timeout=5).cursor()
+        # Copia temporal de la base + su WAL: incluye ítems recién importados con Zotero abierto, sin bloquearlo.
+        tmpd = Path(tempfile.mkdtemp(prefix="spectra_zotero_"))
+        shutil.copyfile(db, tmpd / "z.sqlite")
+        for suf in ("-wal", "-shm"):
+            if Path(str(db) + suf).exists():
+                shutil.copyfile(str(db) + suf, str(tmpd / "z.sqlite") + suf)
+        c = sqlite3.connect(str(tmpd / "z.sqlite"), timeout=5).cursor()
         user_key = c.execute("select value from settings where setting='account' and key='localUserKey'").fetchone()[0]
         version = (c.execute("select value from settings where setting='client' and key='lastVersion'").fetchone() or ["7.0"])[0]
         rows = c.execute("""select i.itemID, i.key, v.value from items i join itemData d on d.itemID=i.itemID
@@ -207,7 +213,7 @@ def _png_size(p: Path) -> tuple[int, int]:
     return int.from_bytes(b[:4], "big"), int.from_bytes(b[4:], "big")
 
 
-def build_doc_json(md: str, bib_text: str, base_dir: Path, work: Path, zotero: bool = True) -> dict:
+def build_doc_json(md: str, bib_text: str, base_dir: Path, work: Path, zotero: bool = True, idioma: str = "es") -> dict:
     bib = parse_bib(bib_text)
     for f in bib.values():
         if f.get("doi") and not f["doi"].startswith("10."):
@@ -289,10 +295,10 @@ def build_doc_json(md: str, bib_text: str, base_dir: Path, work: Path, zotero: b
         runs.append({"text": h[pos:]})
         refs.append([r for r in runs if r["text"]])
     if refs:
-        blocks.append({"t": "h1", "runs": [{"text": "Referencias"}]})
+        blocks.append({"t": "h1", "runs": [{"text": "References" if idioma.startswith("en") else "Referencias"}]})
         blocks.append({"t": "bibliography", "refs": refs})
     prefs = (f'<data data-version="3" zotero-version="{zinfo.get("version", "7.0")}"><session id="{_rid()}"/>'
-             '<style id="http://www.zotero.org/styles/apa" locale="es-ES" hasBibliography="1" bibliographyStyleHasBeenSet="1"/>'
+             '<style id="http://www.zotero.org/styles/apa" locale="{"en-US" if idioma.startswith("en") else "es-ES"}" hasBibliography="1" bibliographyStyleHasBeenSet="1"/>'
              '<prefs><pref name="fieldType" value="Field"/><pref name="automaticJournalAbbreviations" value="true"/></prefs></data>')
     return {"title": title, "blocks": blocks, "citations": B.citations,
             "prefs": [prefs[j:j + 255] for j in range(0, len(prefs), 255)],
@@ -334,7 +340,7 @@ def inject_fields(base: Path, dst: Path, data: dict) -> int:
     return n[0]
 
 
-def export_docx(md: str, bib_text: str, out: Path, base_dir: Path, zotero: bool = True) -> dict:
+def export_docx(md: str, bib_text: str, out: Path, base_dir: Path, zotero: bool = True, idioma: str = "es") -> dict:
     node = shutil.which("node")
     if not node:
         return {"error": "Node.js no está instalado: no se genera el .docx"}
@@ -345,7 +351,7 @@ def export_docx(md: str, bib_text: str, out: Path, base_dir: Path, zotero: bool 
             return {"error": f"npm install falló: {r.stderr[-500:]}"}
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        data = build_doc_json(md, bib_text, base_dir, work, zotero)
+        data = build_doc_json(md, bib_text, base_dir, work, zotero, idioma)
         (work / "doc.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         r = subprocess.run([node, str(DOCX_DIR / "build.js"), str(work / "doc.json"), str(work / "base.docx")],
                            capture_output=True, text=True, timeout=300)

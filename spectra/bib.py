@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 from .tools import academic
@@ -61,7 +62,7 @@ def parse_marco_refs(md: str) -> list[dict]:
 
 
 def build_bib(art03: dict | None, marco_md: str | None, corpus_docs: dict, extra: list[dict] | None = None,
-              online: bool = True) -> tuple[str, list[dict], list[str]]:
+              online: bool = True, verificar: bool = True) -> tuple[str, list[dict], list[str]]:
     """Devuelve (bib_text, informe, sin_resolver)."""
     entries: dict[str, str] = {}
     informe: list[dict] = []
@@ -71,6 +72,21 @@ def build_bib(art03: dict | None, marco_md: str | None, corpus_docs: dict, extra
     def add(key: str, meta: dict, origen: str):
         if not key or key in entries:
             return
+        # A3 ya verificó sus artículos; el resto (marco, corpus, configuración) se verifica aquí
+        if verificar and online and origen != "art_03" and (academic.clean_doi(meta.get("doi")) or meta.get("arxiv")):
+            v = academic.verify({"titulo": meta.get("titulo"), "autores": meta.get("autores"), "anio": meta.get("anio"),
+                                 "id": {"doi": meta.get("doi"), "arxiv": meta.get("arxiv")}})
+            v.pop("meta", None)
+            if not v["ok"]:
+                informe.append({"clave": key, "origen": origen, "accion": "no_verificada", "motivo": v["motivo"],
+                                 "detalle": {k: v[k] for k in ("coincide_titulo", "coincide_autor", "coincide_anio")}})
+                sin_resolver.append(f"{key} (metadatos no coinciden con {v['fuente'] or 'ninguna fuente'})")
+                return
+        elif origen != "art_03" and meta.get("tipo") in ("documento_proyecto", "software"):
+            arch = meta.get("archivo")
+            if arch and not Path(arch).exists():
+                sin_resolver.append(f"{key} (el archivo del proyecto no existe: {arch})")
+                return
         doi = academic.clean_doi(meta.get("doi"))
         if doi and doi in seen_doi:
             informe.append({"clave": key, "accion": "duplicado", "de": seen_doi[doi]})
@@ -158,15 +174,24 @@ def _surname(name: str) -> str:
     return name.split(",")[0].strip() if "," in name else (name.split()[-1] if name.split() else name)
 
 
+LANG = {"y": "y", "sf": "s. f."}
+
+
+def set_lang(idioma: str) -> None:
+    """es (por defecto) o en: conector de dos autores y "sin fecha" en citas y referencias APA."""
+    en = (idioma or "es").startswith("en")
+    LANG.update({"y": "&", "sf": "n.d."} if en else {"y": "y", "sf": "s. f."})
+
+
 def cite_label(f: dict) -> str:
     au = _authors(f)
-    y = f.get("year", "s. f.")
+    y = f.get("year", LANG["sf"])
     if not au:
         return f"{f.get('title', '?')[:30]}, {y}"
     if len(au) == 1:
         return f"{_surname(au[0])}, {y}"
     if len(au) == 2:
-        return f"{_surname(au[0])} y {_surname(au[1])}, {y}"
+        return f"{_surname(au[0])} {LANG['y']} {_surname(au[1])}, {y}"
     return f"{_surname(au[0])} et al., {y}"
 
 
@@ -196,7 +221,7 @@ def format_ref(f: dict, estilo: str = "apa") -> str:
     link = f"https://doi.org/{doi}" if doi else f.get("url", "")
     if f.get("eprint") and not doi:
         link = link or f"https://arxiv.org/abs/{f['eprint']}"
-    s = f"{autores} ({f.get('year', 's. f.')}). {f.get('title', '')}."
+    s = f"{autores} ({f.get('year', LANG['sf'])}). {f.get('title', '')}."
     if venue:
         s += f" <i>{venue}</i>" + (", " + ", ".join(extra) if extra else "") + "."
     if f.get("version"):

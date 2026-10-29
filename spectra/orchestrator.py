@@ -13,7 +13,7 @@ from pathlib import Path
 from . import drawio
 from .agents.base import AgentError, NeedsClaudeCode
 from .agents.impl import make_agent
-from .artifacts import ArtifactStore, now_iso
+from .artifacts import ArtifactStore, content_hash, now_iso
 from .bib import build_bib
 from .compile import compile_paper
 from .config import Config
@@ -87,7 +87,7 @@ class Context:
             return None
         if self._repo is None:
             self._repo = Repo(imp["repo"], imp.get("comandos_evaluacion"), imp.get("cwd"), imp.get("timeout_s", 600),
-                              imp.get("repos_adicionales"))
+                              imp.get("repos_adicionales"), imp.get("excluir"))
         return self._repo
 
     def trace(self, who: str, msg: str) -> None:
@@ -249,6 +249,9 @@ class Orchestrator:
             pol = "saltar"
         if pol == "ejecutar":
             return False
+        done = self.st.get("subagente_completado") or {}
+        if agent and done.get("agente") == agent:    # su artefacto lo acaba de producir un subagente: no es "preexistente"
+            return False
         outs = OUTPUTS.get(key, [])
         have = all(self.exists(o) for o in outs) if outs else True
         if pol == "saltar":
@@ -352,6 +355,14 @@ class Orchestrator:
     # --- bucle principal --------------------------------------------------------------------------
     def run(self, max_pasos: int = 200) -> str:
         self.import_existing()
+        fam = self.cfg.family_violations()
+        if fam:
+            msg = "Heterogeneidad de familias incumplida: " + "; ".join(fam)
+            if self.cfg.get("puertas.exigir_familias_distintas", True):
+                self.st.set_state(self.st["estado"] or "S01_IDEAS", msg)
+                self.ctx.trace("orquestador", msg + " (cambia los modelos o pon puertas.exigir_familias_distintas: false)")
+                return self.st["estado"]
+            self.ctx.trace("orquestador", "AVISO: " + msg)
         if not self.st["estado"]:
             self.st.set_state("S01_IDEAS")
             self.ctx.trace("orquestador", f"inicio: preset={self.preset} modo={self.cfg.orchestrator_mode()} perfil={self.cfg.perfil}")
@@ -458,8 +469,8 @@ class Orchestrator:
         return "H2"
 
     def _freeze(self, tipo_default: str = "prospectivo"):
-        meta, _ = self.store.read("art_04_propuesta")
-        self.st["hash_preregistro"] = meta.get("sha256")
+        meta, body = self.store.read("art_04_propuesta")
+        self.st["hash_preregistro"] = content_hash("art_04_propuesta", body.strip() + "\n")
         self.st["preregistro_tipo"] = meta.get("preregistro") or tipo_default
         self.st["preregistro_version"] = meta.get("version")
         self.st.save()
@@ -471,7 +482,7 @@ class Orchestrator:
             self.mark("H2", "saltado", "propuesta importada; hash congelado")
             return "S05_IMPL"
         meta, body = self.store.read("art_04_propuesta")
-        m = re.search(r"^#+\s*Protocolo.*?(?=^#{1,2}\s|\Z)", body, re.M | re.S)
+        m = re.search(r"^#+\s*(?:Protocolo|Experimental protocol|Evaluation protocol).*?(?=^#{1,2}\s|\Z)", body, re.M | re.S | re.I)
         res = [f"Propuesta: `{self.store.latest_path('art_04_propuesta')}` (v{meta.get('version')}, preregistro {meta.get('preregistro')})",
                f"Arquitectura: `{self.store.dir / 'arquitectura.drawio'}` (vista previa `arquitectura.svg`)" if meta.get("incluye_arquitectura") else "Sin arquitectura.",
                "### Protocolo\n" + truncate(m.group(0) if m else body[:3000], 5000),
@@ -488,9 +499,17 @@ class Orchestrator:
         return "S04_PROPUESTA"
 
     def _check_hash(self):
-        meta, _ = self.store.read("art_04_propuesta")
-        if self.st["hash_preregistro"] and meta.get("sha256") != self.st["hash_preregistro"]:
-            self.ctx.trace("orquestador", "art_04 cambió tras el congelamiento: vuelve a H2")
+        """El preregistro sigue intacto si (1) la última versión de art_04 es la congelada y (2) el hash RECALCULADO
+        de su contenido coincide con el congelado (detecta ediciones a mano del archivo, no solo versiones nuevas)."""
+        frozen = self.st["hash_preregistro"]
+        if not frozen:
+            return True
+        meta, body = self.store.read("art_04_propuesta")
+        actual = content_hash("art_04_propuesta", body.strip() + "\n")
+        if meta.get("version") != self.st.get("preregistro_version") or actual != frozen:
+            self.st["preregistro_violado"] = {"ts": now_iso(), "version": meta.get("version"), "hash_actual": actual}
+            self.st.save()
+            self.ctx.trace("orquestador", f"art_04 cambió tras el congelamiento ({actual} != {frozen}): vuelve a H2")
             return False
         return True
 
@@ -673,7 +692,7 @@ class Orchestrator:
         md = self.store.read("art_07_borrador")[1]
         m = re.search(r"^#\s+(.+)$", md, re.M)
         res = compile_paper(md, (self.store.dir / "art_refs.bib").read_text(encoding="utf-8"), self.ctx.paper_dir,
-                            self.cfg.get("compilacion", {}), m.group(1) if m else "")
+                            {**self.cfg.get("compilacion", {}), "idioma": self.cfg.orq.get("idioma", "es")}, m.group(1) if m else "")
         self.ctx.trace("D2", dumps(res))
         if not res.get("pdf") and not res.get("html"):
             d = self.hitl.ask("HD2", "Error de compilación", "\n".join(res["errores"]))

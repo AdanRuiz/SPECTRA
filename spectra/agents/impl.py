@@ -83,6 +83,16 @@ def bib_listing(ctx) -> str:
     return "\n".join(f"- @{k}: {cite_label(f)} — {f.get('title', '')[:110]}" for k, f in bib.items())
 
 
+def researcher_docs(ctx, limit: int = 40000) -> str:
+    """Documentos que aporta el investigador (proyecto.documentos): propuesta, notas, guion del artículo."""
+    out = []
+    for d in ctx.cfg.get("proyecto.documentos") or []:
+        p = ctx.cfg.path(d)
+        if p.exists():
+            out.append(f"## {p.name}\n" + p.read_text(encoding="utf-8", errors="ignore"))
+    return truncate("\n\n".join(out), limit) if out else ""
+
+
 def bib_text(ctx) -> str:
     p = ctx.store.dir / "art_refs.bib"
     return p.read_text(encoding="utf-8") if p.exists() else ""
@@ -102,6 +112,8 @@ class IdeasAgent(Agent):
                 f"# Tipo de investigación\n{self.cfg.orq.get('tipo_investigacion')}"]
         if self.ctx.repo:
             user.append("# Implementación existente (el paper documentará y evaluará este sistema)\n" + self.ctx.repo_brief(40000))
+        if researcher_docs(self.ctx):
+            user.append("# Documentos del investigador (propuesta; respeta sus hipótesis y su alcance)\n" + researcher_docs(self.ctx))
         prev = self.art("art_01_ideas")
         if comentarios and prev:
             user.append(f"# Versión anterior\n```json\n{truncate(dumps(prev), 20000)}\n```")
@@ -246,6 +258,8 @@ class PropuestaAgent(Agent):
                 f"# Tipo de investigación\n{self.cfg.orq.get('tipo_investigacion')}"]
         if self.inversa and self.ctx.repo:
             user.append("# Implementación existente (ingeniería inversa; lee el código con las herramientas)\n" + self.ctx.repo_brief(50000))
+        if researcher_docs(self.ctx):
+            user.append("# Documentos del investigador (propuesta; el protocolo debe ser coherente con ella)\n" + researcher_docs(self.ctx))
         if comentarios:
             prev = self.art_text("art_04_propuesta", 40000)
             user.append(f"# Versión anterior\n{prev}\n\n# Comentarios del investigador (HITL 2) — deben atenderse\n{comentarios}")
@@ -266,7 +280,7 @@ class PropuestaAgent(Agent):
                 errs += ["grafo: " + e for e in validate_json(json.loads(g), schema)]
             except json.JSONDecodeError as e:
                 errs.append(f"El bloque json arquitectura no es JSON válido: {e}")
-        st = check_structure(md, ["Protocolo experimental"])
+        st = check_structure(md, ["Protocolo experimental|Experimental protocol|Evaluation protocol"])
         errs += [f"Falta la sección: {s}" for s in st["faltantes"]]
         return errs
 
@@ -482,7 +496,8 @@ class RedactorAgent(Agent):
     def required_sections(self) -> list[str]:
         mapa = self.art("art_06_mapa.graph") or {}
         secs = [s["seccion"] for s in mapa.get("secciones_borrador", [])]
-        for s in ("Limitaciones", "Declaración de uso de IA"):
+        en = str(self.cfg.orq.get("idioma", "es")).startswith("en")
+        for s in (("Limitations", "AI Use Declaration") if en else ("Limitaciones", "Declaración de uso de IA")):
             if s not in secs:
                 secs.append(s)
         return secs
@@ -602,7 +617,7 @@ class AsesorAgent(Agent):
             "Devuelve SOLO el Markdown de art_09_asesor."])
 
     def check(self, md: str) -> list[str]:
-        return [f"Falta la sección: {s}" for s in check_structure(md, ["Preguntas críticas", "Acciones obligatorias"])["faltantes"]]
+        return [f"Falta la sección: {s}" for s in check_structure(md, ["Preguntas críticas|Critical questions", "Acciones obligatorias|Mandatory actions|Required actions"])["faltantes"]]
 
     def run(self, **kw):
         return self.postprocess(self.ask_text(self.build_user(**kw), check=self.check, use_tools=False))

@@ -105,7 +105,7 @@ def _sections(md: str) -> list[tuple[str, int, str]]:
 
 
 def check_numbers(md: str, allowed_strict: set[str], allowed_all: set[str], cfg_gates: dict,
-                  strict_sections: tuple[str, ...] = ("resultado", "resumen", "abstract", "evaluaci")) -> dict:
+                  strict_sections: tuple[str, ...] = ("resultado", "resumen", "abstract", "evaluaci", "result")) -> dict:
     """Todo número del texto debe aparecer en los artefactos de entrada; en Resultados/Resumen
     debe aparecer en art_05 (allowed_strict)."""
     max_int = int(cfg_gates.get("enteros_ignorados_max", 12))
@@ -149,16 +149,17 @@ def headings(md: str) -> list[str]:
 def check_structure(md: str, required: list[str]) -> dict:
     hs = [norm_text(h) for h in headings(md)]
     faltan = []
-    for r in required:
-        nr = norm_text(r)
-        if not any(nr in h or h in nr for h in hs if h):
-            faltan.append(r)
+    for r in required:                      # "A|B": vale cualquiera de las alternativas
+        alts = [norm_text(x) for x in r.split("|")]
+        if not any(nr in h or h in nr for nr in alts for h in hs if h):
+            faltan.append(r.split("|")[0])
     return {"ok": not faltan, "faltantes": faltan}
 
 
 COMPARATIVAS = {
-    "Marco Teórico": ("marco teorico", "marco conceptual"),
-    "Trabajos Relacionados": ("trabajos relacionados", "estado del arte"),
+    "Marco Teórico": ("marco teorico", "marco conceptual", "theoretical framework", "theoretical background",
+                      "conceptual framework"),
+    "Trabajos Relacionados": ("trabajos relacionados", "estado del arte", "related work", "state of the art"),
 }
 
 

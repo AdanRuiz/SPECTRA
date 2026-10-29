@@ -24,7 +24,7 @@ LENG = {".py": "Python", ".cpp": "C++", ".cc": "C++", ".h": "C/C++ header", ".hp
 
 class Repo:
     def __init__(self, root: str | Path, comandos: list | None = None, cwd: str | None = None, timeout_s: int = 600,
-                 adicionales: list[dict] | None = None):
+                 adicionales: list[dict] | None = None, excluir: list[str] | None = None):
         self.root = Path(root).resolve()
         if not self.root.exists():
             raise FileNotFoundError(f"No existe el repositorio {self.root}")
@@ -32,6 +32,7 @@ class Repo:
         self.cwd = cwd
         self.timeout = timeout_s
         self.ejecuciones: list[dict] = []
+        self.excluir = [e.strip("/").replace("\\", "/") for e in (excluir or [])]
         # repositorios adicionales (p. ej. un fork de Mixxx): solo las rutas declaradas en `incluir`
         self.extra = []
         for a in adicionales or []:
@@ -47,7 +48,9 @@ class Repo:
             yield base
             return
         for p in base.rglob("*"):
-            if p.is_file() and not any(part in IGNORAR for part in p.relative_to(root).parts):
+            rel = p.relative_to(root)
+            if p.is_file() and not any(part in IGNORAR for part in rel.parts) and not (
+                    root == self.root and any(rel.as_posix() == e or rel.as_posix().startswith(e + "/") for e in self.excluir)):
                 yield p
 
     def entries(self) -> list[tuple[str, Path]]:

@@ -24,6 +24,7 @@ class HITL:
         if dec and not dec.get("pendiente"):
             st["hitl"].pop(h)
             st.data.setdefault("hitl_historial", []).append({"hitl": h, **dec})
+            st["minutos_hitl_total"] = round(st.get("minutos_hitl_total", 0) + float(dec.get("minutos_espera") or 0), 2)
             st.save()
             return dec
         if self.mode == "auto":
@@ -32,6 +33,7 @@ class HITL:
             st.save()
             return d
         if self.mode == "terminal" and sys.stdin and sys.stdin.isatty():
+            self._t0 = now_iso()
             print(f"\n{'=' * 78}\n[HITL {h}] {titulo}\n{'=' * 78}\n{resumen}\n")
             keys = list(opciones)
             for i, k in enumerate(keys, 1):
@@ -44,9 +46,11 @@ class HITL:
                 if r in keys:
                     k = r
                     break
-            com = input("Comentario (opcional): ").strip() if k != "aprobar" or True else ""
-            d = {"decision": k, "comentario": com, "ts": now_iso(), "por": "terminal"}
+            com = input("Comentario (opcional): ").strip()
+            d = {"decision": k, "comentario": com, "ts": now_iso(), "por": "terminal",
+                 "minutos_espera": _minutes(self._t0, now_iso())}
             st.data.setdefault("hitl_historial", []).append({"hitl": h, **d})
+            st["minutos_hitl_total"] = round(st.get("minutos_hitl_total", 0) + d["minutos_espera"], 2)
             st.save()
             return d
         # modo archivo
@@ -69,5 +73,16 @@ def record_decision(state, h: str, decision: str, comentario: str = "", por: str
     ops = pend.get("opciones")
     if ops and decision not in ops:
         raise ValueError(f"Opción inválida para {h}: {decision}. Válidas: {ops}")
-    state["hitl"][h] = {"decision": decision, "comentario": comentario, "ts": now_iso(), "por": por}
+    ahora = now_iso()
+    d = {"decision": decision, "comentario": comentario, "ts": ahora, "por": por}
+    if pend.get("ts"):                       # tiempo desde que se pidió la decisión hasta que se tomó
+        d["solicitado"] = pend["ts"]
+        d["minutos_espera"] = _minutes(pend["ts"], ahora)
+    state["hitl"][h] = d
     state.save()
+
+
+def _minutes(a: str, b: str) -> float:
+    import datetime as dt
+    f = lambda s: dt.datetime.fromisoformat(s.replace("Z", "+00:00"))
+    return round((f(b) - f(a)).total_seconds() / 60, 2)

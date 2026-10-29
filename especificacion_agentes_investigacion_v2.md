@@ -30,6 +30,7 @@
 | 14 | **Tablas comparativas obligatorias** al final de *Marco Teórico* y de *Trabajos Relacionados* (puerta dura en A7 y A8; A2 entrega la del marco) | Que todo artículo las incluya |
 | 15 | Comando `spectra revise` para reabrir un proyecto terminado (A7 → A8 → H3 → D2, con o sin nuevo Peer Review) | Ajustes del investigador después de FIN |
 | 16 | D2 genera `art_paper.docx` editable con citas y bibliografía como campos vivos de Zotero; comando `spectra zotero` | Edición final en Word con el gestor de referencias del investigador |
+| 17 | Heterogeneidad de familias exigida por código, hash del preregistro recalculado, verificación de toda la bibliografía en D1, minutos de HITL, salida en inglés (`orquestador.idioma: en`) y `proyecto.documentos` | Huecos detectados por A4b al documentar SPECTRA con SPECTRA |
 
 ### 0.2 Cambios de v2 respecto a v1 (se mantienen)
 
@@ -437,7 +438,7 @@ python -m spectra sync-agents | models-check
 ### Paso D2: Compilador (determinista)
 * **Implementación:** `spectra/compile.py` (`scripts/compile.py`).
 * **Motores:** `pandoc` (+ `--citeproc` y xelatex si existen) o **interno**: Markdown → HTML (citas APA/IEEE resueltas desde `art_refs.bib`, tablas, figuras SVG incrustadas, MathJax) y Markdown → LaTeX (`biblatex`, `\parencite`); PDF con Edge/Chrome *headless*.
-* **Word editable con Zotero** (`spectra/docx_export.py` + `spectra/docx/build.js`, docx-js; `compilacion.docx`, `compilacion.zotero`): `art_paper.docx` con estilos de título, tablas, figuras (SVG → PNG con el navegador), fórmulas en línea como texto con subíndices/superíndices y **cada cita como campo vivo de Zotero** (`ADDIN ZOTERO_ITEM CSL_CITATION`, con localizador de página) más la bibliografía como `ADDIN ZOTERO_BIBL`, estilo APA y preferencias en `ZOTERO_PREF_n`. Si Zotero está instalado, cada cita se enlaza por título con el ítem de la biblioteca local (lectura inmutable de `zotero.sqlite`, sin bloquear la app); si no, el campo lleva los datos CSL incrustados. En Word, *Zotero → Refresh* regenera citas y bibliografía. `python -m spectra zotero` importa `art_refs.bib` a la colección seleccionada en Zotero con la etiqueta `SPECTRA-<proyecto>`. Requiere Node.js (el primer uso instala `docx` con npm); un fallo del .docx nunca bloquea D2.
+* **Word editable con Zotero** (`spectra/docx_export.py` + `spectra/docx/build.js`, docx-js; `compilacion.docx`, `compilacion.zotero`): `art_paper.docx` con estilos de título, tablas, figuras (SVG → PNG con el navegador), fórmulas en línea como texto con subíndices/superíndices y **cada cita como campo vivo de Zotero** (`ADDIN ZOTERO_ITEM CSL_CITATION`, con localizador de página) más la bibliografía como `ADDIN ZOTERO_BIBL`, estilo APA y preferencias en `ZOTERO_PREF_n`. Si Zotero está instalado, cada cita se enlaza por título con el ítem de la biblioteca local (lee una copia temporal de `zotero.sqlite` y su WAL, sin bloquear la app e incluyendo ítems recién importados); si no, el campo lleva los datos CSL incrustados. En Word, *Zotero → Refresh* regenera citas y bibliografía. `python -m spectra zotero` importa `art_refs.bib` a la colección seleccionada en Zotero con la etiqueta `SPECTRA-<proyecto>`. Requiere Node.js (el primer uso instala `docx` con npm); un fallo del .docx nunca bloquea D2.
 * **Salida:** `paper/art_paper.{md,html,tex,pdf,docx}` + `paper/figuras/`. Si un archivo está abierto en otro programa, se escribe como `*_nuevo.*`. **Fallo:** **HD2**.
 
 ---
@@ -488,8 +489,10 @@ costo: { tokens_entrada: 0, tokens_salida: 0, usd: 0.0 }
 | Estructura = `secciones_borrador` + obligatorias | `check_structure` | A7, A8 |
 | Tablas comparativas al final de *Marco Teórico* y *Trabajos Relacionados* (≥ 3 columnas, ≥ 2 filas, solo leyenda después) | `check_comparative_tables` | A7, A8 |
 | Similitud máxima (n-gramas de 8 palabras) < umbral | `check_similarity` contra resúmenes de art_03 y el corpus | A8 |
-| Hash de art_04 = hash congelado | orquestador | A5, A10 |
 | Presupuesto no excedido (total y por agente) | `CostLog.check` | Antes de cada llamada |
+| Familias distintas redactor/evaluadores (`puertas.familias_distintas`, por defecto A7≠A8 y A7≠A10) | `Config.family_violations` (el orquestador no arranca si se incumple; `puertas.exigir_familias_distintas: false` lo vuelve aviso) | Inicio de cada `run` |
+| Hash **recalculado** del contenido de art_04 = hash congelado y última versión = versión congelada | `_check_hash` (detecta ediciones a mano, no solo versiones nuevas) | A5, A10 |
+| Toda entrada del `.bib` con DOI/arXiv verificada (no solo las de A3); documentos del proyecto con archivo existente | `build_bib(verificar=True)` | D1 |
 
 ### 6.2 Quality Gate 1 (A8)
 ```
@@ -526,6 +529,7 @@ si no aprueba y N == max_iter   → H_ESCALA: aceptar, una vuelta más con comen
 
 * `logs/costos.jsonl`: una línea por llamada (agente, modelo, proveedor, tokens, USD reportado por OpenRouter, duración).
 * `logs/trazas.log`: cada paso del orquestador y cada llamada a herramienta.
+* Cada decisión HITL registra `solicitado`, `ts` y `minutos_espera` (de la petición a la decisión); `minutos_hitl_total` acumula el esfuerzo humano en `pipeline_state.json`.
 * `python -m spectra status` muestra estado, iteración, gasto acumulado frente al presupuesto (total y por agente), preregistro, fases saltadas, HITL pendientes y artefactos.
 * Al 80 % del presupuesto se avisa; al 100 % (total o por agente) el pipeline se pausa: se sube el límite en `proyecto.yaml` y se reanuda.
 

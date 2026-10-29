@@ -195,3 +195,44 @@ def test_docx_zotero_fields(tmp_path):
     xml = zipfile.ZipFile(r["docx"]).read("word/document.xml").decode("utf-8")
     assert "ZOTERO_ITEM CSL_CITATION" in xml and "ZOTERO_BIBL" in xml and "§§" not in xml
     assert "ZOTERO_PREF_1" in zipfile.ZipFile(r["docx"]).read("docProps/custom.xml").decode("utf-8")
+
+
+def test_family_heterogeneity_enforced(tmp_path):
+    from spectra.orchestrator import Orchestrator
+    d = _project(tmp_path, "agentes:\n  a08_revisor:\n    override: {openrouter_id: anthropic/claude-haiku-5.5}\n")
+    cfg = Config(d)
+    assert any("a08_revisor" in v and "anthropic" in v for v in cfg.family_violations())
+    o = Orchestrator(cfg)
+    o.run(max_pasos=1)
+    assert "Heterogeneidad" in o.st["estado_detalle"]          # se detiene antes de llamar a ningún modelo
+    (tmp_path / "ok").mkdir()
+    assert Config(_project(tmp_path / "ok", "")).family_violations() == []
+
+
+def test_preregistration_detects_in_place_edit(tmp_path):
+    from spectra.orchestrator import Orchestrator
+    o = Orchestrator(Config(_project(tmp_path, "")))
+    v, p = o.store.write("art_04_propuesta", "# Propuesta\n## Protocolo experimental\nH1: x < 10 ms", agente="a", proveedor="p", modelo="m")
+    o._freeze()
+    assert o._check_hash()
+    p.write_text(p.read_text(encoding="utf-8").replace("x < 10 ms", "x < 20 ms"), encoding="utf-8")   # edición a mano
+    assert not o._check_hash() and o.st["preregistro_violado"]
+
+
+def test_hitl_minutes_recorded(tmp_path):
+    from spectra.hitl import record_decision
+    from spectra.state import State
+    st = State(tmp_path)
+    st["hitl"]["H2"] = {"pendiente": True, "ts": "2026-10-28T10:00:00Z", "opciones": ["aprobar", "cambios", "rechazar"]}
+    record_decision(st, "H2", "aprobar")
+    assert st["hitl"]["H2"]["solicitado"] == "2026-10-28T10:00:00Z" and st["hitl"]["H2"]["minutos_espera"] > 0
+
+
+def test_d1_verifies_non_a3_entries(monkeypatch):
+    from spectra import bib as B
+    monkeypatch.setattr(B.academic, "verify", lambda a, email="": {"ok": False, "fuente": "crossref", "motivo": "metadatos no coinciden",
+                                                                  "coincide_titulo": False, "coincide_autor": True, "coincide_anio": True})
+    monkeypatch.setattr(B.academic, "crossref_bibtex", lambda doi: None)
+    md = "## Referencias usadas\n- clave: falso2020x · doi: 10.1/abc · archivo: — · tipo: ficha_resumen\n"
+    text, informe, sin = B.build_bib({"articulos": []}, md, {"falso2020x": {"titulo": "Otro", "autores": ["A B"], "anio": 2020}})
+    assert "falso2020x" not in gates.bib_keys(text) and any("falso2020x" in s for s in sin)

@@ -44,7 +44,8 @@ Español académico riguroso, preciso y sin relleno.
 
 ## Reglas duras (se verifican automáticamente)
 - **Estructura:** sigue exactamente las secciones de `secciones_borrador` (títulos `##`), más **Limitaciones** y
-  **Declaración de uso de IA**. El documento empieza con `# Título`.
+  **Declaración de uso de IA** (en inglés: **Limitations** y **AI Use Declaration**). El documento empieza con
+  `# Título`. Escribe todo en el idioma de salida indicado, incluidas leyendas ("Table N." / "Figure N.").
 - **Citas:** solo claves presentes en `art_refs.bib`, formato `[@clave]`. Cita los trabajos relacionados al
   compararlos y los documentos del proyecto al describir la especificación.
 - **Números:** cópialos **literalmente** de art_05 (en Resumen y Resultados, solo de art_05). Prohibido redondear
@@ -56,7 +57,8 @@ Español académico riguroso, preciso y sin relleno.
   validación o trabajo futuro (sin resultados).
 - **Figuras:** incluye las figuras disponibles con `![Figura N. Leyenda descriptiva](figuras/archivo.svg)`.
 - **Tablas** en Markdown con encabezado.
-- **Tablas comparativas obligatorias** (puerta dura): la sección **Marco Teórico** termina con una *tabla
+- **Tablas comparativas obligatorias** (puerta dura): la sección **Marco Teórico** (*Theoretical Framework*)
+  y la sección **Trabajos Relacionados** (*Related Work*) terminan cada una con su tabla. **Marco Teórico** termina con una *tabla
   comparativa del marco teórico* (una fila por concepto o marco de art_02; columnas mínimas: concepto, definición
   o aportación, fuente con cita, relación con las hipótesis y cómo lo instancia este trabajo). La sección
   **Trabajos Relacionados** termina con una *tabla comparativa del estado del arte* (una fila por trabajo o

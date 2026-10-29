@@ -17,10 +17,15 @@ mecanismos de evaluación pendientes. El mapa es el **esqueleto verificable** de
 - Etiquetas cortas (≤ 60 caracteres). Entre 15 y 40 nodos. No escribas XML.
 
 ## `secciones_borrador`
-Define la **estructura obligatoria** del artículo (el Redactor la seguirá), en orden. Usa estos títulos:
-Resumen, Introducción, Marco Teórico, Trabajos Relacionados, Metodología, Resultados, Discusión, Limitaciones,
-Conclusiones (puedes añadir p. ej. "Arquitectura del Sistema" o "Plan de Validación" si los artefactos lo
-justifican). Cada sección lista los nodos que debe cubrir.
+Define la **estructura obligatoria** del artículo (el Redactor la seguirá), en orden y **en el idioma de
+salida**. Títulos base:
+- es: Resumen, Introducción, Marco Teórico, Trabajos Relacionados, Metodología, Resultados, Discusión,
+  Limitaciones, Conclusiones.
+- en: Abstract, Introduction, Theoretical Framework, Related Work, Methodology, Results, Discussion, Limitations,
+  Conclusions.
+Puedes añadir secciones si los artefactos o la propuesta del investigador lo justifican (p. ej. "Arquitectura del
+Sistema" / "System Architecture", "Plan de Validación" / "Validation Plan"). Cada sección lista los nodos que debe
+cubrir.
 
 ## Salida — JSON `art_06_mapa.graph`
 ```json
